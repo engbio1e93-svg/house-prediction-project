@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.graph_objects as go
-import plotly.express as px
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -23,7 +21,7 @@ def train_models():
     
     df = pd.read_csv('final_cleaned_train.csv')
     
-    # 1. تحويل النصوص إلى أرقام
+    # 1. معالجة البيانات
     cat_cols = df.select_dtypes(['object']).columns
     mappings = {col: list(df[col].astype('category').cat.categories) for col in cat_cols}
     for col in cat_cols: 
@@ -50,72 +48,12 @@ def train_models():
                 r2_score(y_true, y_pred))
 
     # --- تدريب النماذج ---
+    # 1. Random Forest
     rf = RandomForestRegressor(n_estimators=50, random_state=42).fit(X_train, y_train)
     m_rf = get_metrics(y_test, rf.predict(X_test))
 
+    # 2. LSTM
     lstm = Sequential([LSTM(32, activation='relu', input_shape=(1, X.shape[1])), Dense(1)])
     lstm.compile(optimizer='adam', loss='mse')
     lstm.fit(X_train_3d, y_train_scaled, epochs=10, validation_split=0.17, verbose=0)
-    m_lstm = get_metrics(y_test, sy.inverse_transform(lstm.predict(X_test_3d)))
-
-    gru = Sequential([GRU(32, activation='relu', input_shape=(1, X.shape[1])), Dense(1)])
-    gru.compile(optimizer='adam', loss='mse')
-    gru.fit(X_train_3d, y_train_scaled, epochs=10, validation_split=0.17, verbose=0)
-    m_gru = get_metrics(y_test, sy.inverse_transform(gru.predict(X_test_3d)))
-
-    return rf, lstm, gru, X.columns.tolist(), sx, sy, m_rf, m_lstm, m_gru, mappings
-
-with st.spinner('جاري تشغيل محركات الذكاء الاصطناعي...'):
-    data = train_models()
-
-if data:
-    rf, lstm, gru, features, sx, sy, m_rf, m_lstm, m_gru, mappings = data
-    
-    # واجهة المستخدم الجانبية لإدخال البيانات
-    st.sidebar.header("📝 إدخال مواصفات العقار")
-    u_in = {}
-    for f in features:
-        if f in mappings:
-            u_in[f] = mappings[f].index(st.sidebar.selectbox(f, mappings[f]))
-        else:
-            u_in[f] = st.sidebar.number_input(f, value=float(0))
-
-    if st.sidebar.button("🚀 توقع السعر الآن"):
-        # تحضير المدخلات للتنبؤ
-        in_df = pd.DataFrame([u_in])[features]
-        in_s = sx.transform(in_df)
-        in_3d = in_s.reshape((1, 1, in_s.shape[1]))
-
-        # حساب التوقعات
-        res_rf = rf.predict(in_df)[0]
-        res_lstm = sy.inverse_transform(lstm.predict(in_3d))[0][0]
-        res_gru = sy.inverse_transform(gru.predict(in_3d))[0][0]
-
-        # --- الجزء الأول: عرض الأسعار المتوقعة بشكل واضح وكبير ---
-        st.markdown("### 💰 نتائج التوقعات الحالية:")
-        c1, c2, c3 = st.columns(3)
-        c1.success(f"**Random Forest:** \n### ${res_rf:,.2f}")
-        c2.warning(f"**LSTM Model:** \n### ${res_lstm:,.2f}")
-        c3.info(f"**GRU Model:** \n### ${res_gru:,.2f}")
-
-        # --- الجزء الثاني: الرسم البياني لمقارنة التوقعات ---
-        st.markdown("---")
-        fig_pred = px.bar(
-            x=["RF", "LSTM", "GRU"], 
-            y=[res_rf, res_lstm, res_gru],
-            color=["RF", "LSTM", "GRU"],
-            labels={'x': 'الموديل', 'y': 'السعر المتوقع ($)'},
-            title="مقارنة توقعات السعر للعقار المدخل"
-        )
-        st.plotly_chart(fig_pred, use_container_width=True)
-
-    # --- الجزء الثالث: عرض مقاييس الأداء العامة للبحث ---
-    st.markdown("---")
-    st.subheader("📊 مقاييس أداء النماذج (Evaluation Metrics)")
-    
-    m_df = pd.DataFrame({
-        "الموديل": ["Random Forest", "LSTM", "GRU"],
-        "MAE (متوسط الخطأ)": [f"{m_rf[0]:,.2f}", f"{m_lstm[0]:,.2f}", f"{m_gru[0]:,.2f}"],
-        "R² Score (الدقة)": [f"{m_rf[2]:.4f}", f"{m_lstm[2]:.4f}", f"{m_gru[2]:.4f}"]
-    })
-    st.table(m_df)
+    m_lstm = get_metrics(y_test, sy.inverse_transform(lstm.
