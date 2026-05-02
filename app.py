@@ -52,8 +52,36 @@ def train_models():
     rf = RandomForestRegressor(n_estimators=50, random_state=42).fit(X_train, y_train)
     m_rf = get_metrics(y_test, rf.predict(X_test))
 
-    # 2. LSTM
+    # 2. LSTM (تأكد من إغلاق القوس هنا)
     lstm = Sequential([LSTM(32, activation='relu', input_shape=(1, X.shape[1])), Dense(1)])
     lstm.compile(optimizer='adam', loss='mse')
     lstm.fit(X_train_3d, y_train_scaled, epochs=10, validation_split=0.17, verbose=0)
-    m_lstm = get_metrics(y_test, sy.inverse_transform(lstm.
+    # السطر الذي كان يحتوي على الخطأ تم تصحيحه الآن:
+    m_lstm = get_metrics(y_test, sy.inverse_transform(lstm.predict(X_test_3d)))
+
+    # 3. GRU
+    gru = Sequential([GRU(32, activation='relu', input_shape=(1, X.shape[1])), Dense(1)])
+    gru.compile(optimizer='adam', loss='mse')
+    gru.fit(X_train_3d, y_train_scaled, epochs=10, validation_split=0.17, verbose=0)
+    m_gru = get_metrics(y_test, sy.inverse_transform(gru.predict(X_test_3d)))
+
+    return rf, lstm, gru, X.columns.tolist(), sx, sy, m_rf, m_lstm, m_gru, mappings
+
+with st.spinner('جاري تدريب النماذج بنظام التقسيم الثلاثي...'):
+    data = train_models()
+
+if data:
+    rf, lstm, gru, features, sx, sy, m_rf, m_lstm, m_gru, mappings = data
+    
+    st.sidebar.header("📝 إدخال مواصفات العقار")
+    u_in = {}
+    for f in features:
+        if f in mappings:
+            u_in[f] = mappings[f].index(st.sidebar.selectbox(f, mappings[f]))
+        else:
+            u_in[f] = st.sidebar.number_input(f, value=float(0))
+
+    if st.sidebar.button("🚀 توقع السعر والمقارنة"):
+        in_df = pd.DataFrame([u_in])[features]
+        in_s = sx.transform(in_df)
+        in_3d = in_s.reshape((1, 1, in_s.shape
