@@ -30,7 +30,7 @@ def train_models():
     X = df.drop(columns=['SalePrice'])
     y = df['SalePrice'].values
     
-    # 2. تقسيم البيانات (70% تدريب، 15% تحقق، 15% اختبار)
+    # 2. تقسيم البيانات (70/15/15)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=42)
 
     # 3. تهيئة المقاييس
@@ -39,41 +39,51 @@ def train_models():
     y_train_scaled = sy.fit_transform(y_train.reshape(-1, 1))
     X_test_scaled = sx.transform(X_test)
     
+    # تحويل البيانات إلى 3D
     X_train_3d = X_train_scaled.reshape((X_train_scaled.shape[0], 1, X_train_scaled.shape[1]))
     X_test_3d = X_test_scaled.reshape((X_test_scaled.shape[0], 1, X_test_scaled.shape[1]))
 
     def get_metrics(y_true, y_pred):
-        return (mean_absolute_error(y_true, y_pred), 
-                np.sqrt(mean_squared_error(y_true, y_pred)), 
-                r2_score(y_true, y_pred))
+        mae = mean_absolute_error(y_true, y_pred)
+        rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+        r2 = r2_score(y_true, y_pred)
+        return mae, rmse, r2
 
     # --- تدريب النماذج ---
     # 1. Random Forest
-    rf = RandomForestRegressor(n_estimators=50, random_state=42).fit(X_train, y_train)
+    rf = RandomForestRegressor(n_estimators=50, random_state=42)
+    rf.fit(X_train, y_train)
     m_rf = get_metrics(y_test, rf.predict(X_test))
 
-    # 2. LSTM (تأكد من إغلاق القوس هنا)
-    lstm = Sequential([LSTM(32, activation='relu', input_shape=(1, X.shape[1])), Dense(1)])
+    # 2. LSTM
+    lstm = Sequential([
+        LSTM(32, activation='relu', input_shape=(1, X.shape[1])),
+        Dense(1)
+    ])
     lstm.compile(optimizer='adam', loss='mse')
     lstm.fit(X_train_3d, y_train_scaled, epochs=10, validation_split=0.17, verbose=0)
-    # السطر الذي كان يحتوي على الخطأ تم تصحيحه الآن:
-    m_lstm = get_metrics(y_test, sy.inverse_transform(lstm.predict(X_test_3d)))
+    pred_lstm = lstm.predict(X_test_3d)
+    m_lstm = get_metrics(y_test, sy.inverse_transform(pred_lstm))
 
     # 3. GRU
-    gru = Sequential([GRU(32, activation='relu', input_shape=(1, X.shape[1])), Dense(1)])
+    gru = Sequential([
+        GRU(32, activation='relu', input_shape=(1, X.shape[1])),
+        Dense(1)
+    ])
     gru.compile(optimizer='adam', loss='mse')
     gru.fit(X_train_3d, y_train_scaled, epochs=10, validation_split=0.17, verbose=0)
-    m_gru = get_metrics(y_test, sy.inverse_transform(gru.predict(X_test_3d)))
+    pred_gru = gru.predict(X_test_3d)
+    m_gru = get_metrics(y_test, sy.inverse_transform(pred_gru))
 
     return rf, lstm, gru, X.columns.tolist(), sx, sy, m_rf, m_lstm, m_gru, mappings
 
-with st.spinner('جاري تدريب النماذج بنظام التقسيم الثلاثي...'):
+with st.spinner('جاري تدريب النماذج...'):
     data = train_models()
 
 if data:
     rf, lstm, gru, features, sx, sy, m_rf, m_lstm, m_gru, mappings = data
     
-    st.sidebar.header("📝 إدخال مواصفات العقار")
+    st.sidebar.header("📝 إدخال المواصفات")
     u_in = {}
     for f in features:
         if f in mappings:
@@ -84,4 +94,31 @@ if data:
     if st.sidebar.button("🚀 توقع السعر والمقارنة"):
         in_df = pd.DataFrame([u_in])[features]
         in_s = sx.transform(in_df)
-        in_3d = in_s.reshape((1, 1, in_s.shape
+        # تصحيح السطر الذي ظهر فيه الخطأ عندك:
+        in_3d = in_s.reshape((1, 1, in_s.shape[1]))
+
+        # حساب التوقعات
+        res_rf = rf.predict(in_df)[0]
+        
+        raw_lstm = lstm.predict(in_3d)
+        res_lstm = sy.inverse_transform(raw_lstm)[0][0]
+        
+        raw_gru = gru.predict(in_3d)
+        res_gru = sy.inverse_transform(raw_gru)[0][0]
+
+        st.subheader("💰 الأسعار المتوقعة للعقار")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Random Forest", f"${res_rf:,.2f}")
+        c2.metric("LSTM", f"${res_lstm:,.2f}")
+        c3.metric("GRU", f"${res_gru:,.2f}")
+
+        st.divider()
+
+        st.subheader("📊 جدول المقاييس (Evaluation Metrics)")
+        comparison_df = pd.DataFrame({
+            "الموديل (Model)": ["Random Forest", "LSTM", "GRU"],
+            "MAE (الخطأ المطلق)": [f"{m_rf[0]:,.2f}", f"{m_lstm[0]:,.2f}", f"{m_gru[0]:,.2f}"],
+            "RMSE (جذر الخطأ)": [f"{m_rf[1]:,.2f}", f"{m_lstm[1]:,.2f}", f"{m_gru[1]:,.2f}"],
+            "R² Score (الدقة)": [f"{m_rf[2]:.4f}", f"{m_lstm[2]:.4f}", f"{m_gru[2]:.4f}"]
+        })
+        st.table(comparison_df)
