@@ -14,7 +14,7 @@ import os
 
 # إعداد الصفحة
 st.set_page_config(page_title="مشروع المهندس أحمد رافد", layout="wide")
-st.markdown("<h1 style='text-align: center;'>🏠 نظام التنبؤ العقاري المتقدم والمقارنة البيانية</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>🏠 نظام التنبؤ العقاري المتقدم (LSTM vs GRU vs RF)</h1>", unsafe_allow_html=True)
 
 @st.cache_resource
 def train_models():
@@ -32,7 +32,7 @@ def train_models():
     X = df.drop(columns=['SalePrice'])
     y = df['SalePrice'].values
     
-    # 2. تقسيم البيانات (70/15/15)
+    # 2. تقسيم البيانات (70% تدريب، 15% تحقق، 15% اختبار)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=42)
 
     # 3. تهيئة المقاييس
@@ -65,39 +65,14 @@ def train_models():
 
     return rf, lstm, gru, X.columns.tolist(), sx, sy, m_rf, m_lstm, m_gru, mappings
 
-with st.spinner('جاري تحليل البيانات ورسم المخططات...'):
+with st.spinner('جاري تشغيل محركات الذكاء الاصطناعي...'):
     data = train_models()
 
 if data:
     rf, lstm, gru, features, sx, sy, m_rf, m_lstm, m_gru, mappings = data
     
-    # --- قسم الرسوم البيانية للمقاييس ---
-    st.subheader("📊 مقارنة أداء النماذج بيانياً")
-    
-    metrics_df = pd.DataFrame({
-        "Model": ["Random Forest", "LSTM", "GRU"],
-        "MAE": [m_rf[0], m_lstm[0], m_gru[0]],
-        "R2 Score": [m_rf[2], m_lstm[2], m_gru[2]]
-    })
-
-    col_chart1, col_chart2 = st.columns(2)
-
-    with col_chart1:
-        # رسم MAe (الأقل هو الأفضل)
-        fig_mae = px.bar(metrics_df, x="Model", y="MAE", title="Mean Absolute Error (Lower is better)",
-                         color="Model", text_auto='.2f')
-        st.plotly_chart(fig_mae, use_container_width=True)
-
-    with col_chart2:
-        # رسم R2 (الأعلى هو الأفضل)
-        fig_r2 = px.bar(metrics_df, x="Model", y="R2 Score", title="R² Score (Accuracy)",
-                        color="Model", text_auto='.4f')
-        st.plotly_chart(fig_r2, use_container_width=True)
-
-    st.divider()
-
-    # --- إدخال المستخدم ---
-    st.sidebar.header("📝 إدخال المواصفات")
+    # واجهة المستخدم الجانبية لإدخال البيانات
+    st.sidebar.header("📝 إدخال مواصفات العقار")
     u_in = {}
     for f in features:
         if f in mappings:
@@ -106,10 +81,41 @@ if data:
             u_in[f] = st.sidebar.number_input(f, value=float(0))
 
     if st.sidebar.button("🚀 توقع السعر الآن"):
+        # تحضير المدخلات للتنبؤ
         in_df = pd.DataFrame([u_in])[features]
         in_s = sx.transform(in_df)
         in_3d = in_s.reshape((1, 1, in_s.shape[1]))
 
+        # حساب التوقعات
         res_rf = rf.predict(in_df)[0]
         res_lstm = sy.inverse_transform(lstm.predict(in_3d))[0][0]
-        res_gru = sy.inverse_transform(gru.predict(in_3d))
+        res_gru = sy.inverse_transform(gru.predict(in_3d))[0][0]
+
+        # --- الجزء الأول: عرض الأسعار المتوقعة بشكل واضح وكبير ---
+        st.markdown("### 💰 نتائج التوقعات الحالية:")
+        c1, c2, c3 = st.columns(3)
+        c1.success(f"**Random Forest:** \n### ${res_rf:,.2f}")
+        c2.warning(f"**LSTM Model:** \n### ${res_lstm:,.2f}")
+        c3.info(f"**GRU Model:** \n### ${res_gru:,.2f}")
+
+        # --- الجزء الثاني: الرسم البياني لمقارنة التوقعات ---
+        st.markdown("---")
+        fig_pred = px.bar(
+            x=["RF", "LSTM", "GRU"], 
+            y=[res_rf, res_lstm, res_gru],
+            color=["RF", "LSTM", "GRU"],
+            labels={'x': 'الموديل', 'y': 'السعر المتوقع ($)'},
+            title="مقارنة توقعات السعر للعقار المدخل"
+        )
+        st.plotly_chart(fig_pred, use_container_width=True)
+
+    # --- الجزء الثالث: عرض مقاييس الأداء العامة للبحث ---
+    st.markdown("---")
+    st.subheader("📊 مقاييس أداء النماذج (Evaluation Metrics)")
+    
+    m_df = pd.DataFrame({
+        "الموديل": ["Random Forest", "LSTM", "GRU"],
+        "MAE (متوسط الخطأ)": [f"{m_rf[0]:,.2f}", f"{m_lstm[0]:,.2f}", f"{m_gru[0]:,.2f}"],
+        "R² Score (الدقة)": [f"{m_rf[2]:.4f}", f"{m_lstm[2]:.4f}", f"{m_gru[2]:.4f}"]
+    })
+    st.table(m_df)
