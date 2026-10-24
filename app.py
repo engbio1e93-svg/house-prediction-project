@@ -14,11 +14,29 @@ import os
 # إعداد الصفحة وهوية المنصة
 st.set_page_config(page_title="عقاري iQ | منصة التنبؤ العقاري الذكي", layout="wide")
 
-# تصميم الهيدر بشكل فخم
+# تصميم الهيدر العقاري الفخم والخلفية
 st.markdown("""
-    <div style='text-align: center; padding: 10px;'>
-        <h1 style='color: #1E3A8A; margin-bottom: 0;'>🏢 عقاري iQ (Aqari iQ)</h1>
-        <p style='color: #64748B; font-size: 18px;'>النظام الذكي المتقدم لتسعير وتقييم العقارات بالذكاء الاصطناعي</p>
+    <style>
+    .main {
+        background-color: #F8FAFC;
+    }
+    .real-estate-header {
+        background: linear-gradient(135deg, rgba(30, 58, 138, 0.9), rgba(37, 99, 235, 0.8)), 
+                    url('https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
+        background-size: cover;
+        background-position: center;
+        padding: 40px 20px;
+        border-radius: 15px;
+        color: white;
+        text-align: center;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    </style>
+
+    <div class="real-estate-header">
+        <h1 style='color: white; margin-bottom: 5px; font-size: 38px;'>🏢 منصة عقاري iQ (Aqari iQ)</h1>
+        <p style='color: #E2E8F0; font-size: 18px; margin: 0;'>النظام الذكي المتقدم لتسعير وتقييم العقارات في مدينة الناصرية بالذكاء الاصطناعي</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -80,7 +98,7 @@ def train_models():
 
     gru = Sequential([
         GRU(32, activation='relu', input_shape=(1, X.shape[1])),
-        Dense(1)
+    Dense(1)
     ])
     gru.compile(optimizer='adam', loss='mse')
     gru.fit(X_train_3d, y_train_scaled, epochs=10, validation_split=0.17, verbose=0)
@@ -97,6 +115,7 @@ if data:
     
     # --- نظام التبويبات الفخم (Tabs) ---
     tab1, tab2, tab3, tab4 = st.tabs(["🏠 قيم عقارك", "📢 اعرض عقارك", "💡 استشيرني", "📈 استثمر"])
+
     with tab1:
         st.sidebar.header("📝 مواصفات العقار")
         u_in = {}
@@ -120,10 +139,22 @@ if data:
             raw_gru = gru.predict(in_3d)
             res_gru = sy.inverse_transform(raw_gru)[0][0]
 
-            st.markdown("### 💰 الأسعار المتوقعة للعقار حسب النماذج:")
+            # حساب السعر الموحد المدمج (عقاري iQ Index)
+            blended_price = (res_rf + res_xgb) / 2
+
+            # عرض بطاقة السعر الموحد البارزة في الأعلى
+            st.markdown(f"""
+                <div style='background-color: #F8FAFC; padding: 25px; border-radius: 12px; border: 2px solid #2563EB; text-align: center; margin-bottom: 25px;'>
+                    <h3 style='color: #1E3A8A; margin: 0;'>🏷️ السعر العادل المقترح (عقاري iQ Index)</h3>
+                    <h1 style='color: #2563EB; margin: 10px 0; font-size: 42px;'>${blended_price:,.2f}</h1>
+                    <p style='color: #64748B; margin: 0;'>هذا السعر يمثل القيمة المرجحة والدقيقة المستندة إلى توافق أقوى نماذج التعلم الآلي في المنصة</p>
+                </div>
+            """, unsafe_allow_html=True)
+
+            st.markdown("### 💰 تفاصيل توقعات النماذج الفردية:")
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("Random Forest", f"${res_rf:,.2f}")
-            c2.metric("XGBoost (جديد)", f"${res_xgb:,.2f}")
+            c2.metric("XGBoost", f"${res_xgb:,.2f}")
             c3.metric("LSTM", f"${res_lstm:,.2f}")
             c4.metric("GRU", f"${res_gru:,.2f}")
 
@@ -149,7 +180,6 @@ if data:
     with tab3:
         st.subheader("💡 استشيرني - المساعد الذكي للاستثمار (قريباً)")
         st.warning("مستشار ذكي يعتمد على تحليل السوق في مدينة الناصرية لتقديم نصائح حول توقيت الشراء والبيع والمنطقة الأكثر ربحية.")
-
-    with tab4:
+        with tab4:
         st.subheader("📈 استثمر واتجاهات السوق (قريباً)")
         st.markdown("مؤشرات رسومية تفاعلية تعرض حركة التوسع العمراني وتغير الأسعار في أطراف المركز والمحافظة.")
