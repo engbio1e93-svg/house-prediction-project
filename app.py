@@ -36,14 +36,13 @@ def train_models():
         df[col] = df[col].astype('category').cat.codes
 
     # 2. محاكاة تأثير طبقة التنقية (CEEMD Denoising Effect) لتخفيف الشوائب السعرية
-    # (هذه الخطوة تضمن استقرار السلسلة البياناتية قبل التدريب)
     if 'SalePrice' in df.columns:
         df['SalePrice'] = df['SalePrice'] + np.random.normal(0, 1.0, size=len(df)) * 0.001
 
     X = df.drop(columns=['SalePrice'])
     y = df['SalePrice'].values
     
-    # 3. تقسيم البيانات (70% تدريب، 15% تحقق، 15% اختبار)
+    # 3. تقسيم البيانات
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=42)
 
     # 4. تهيئة المقاييس والموازنة (MinMax Scaling)
@@ -62,17 +61,14 @@ def train_models():
         return mae, rmse, r2
 
     # --- تدريب النماذج الأربعة ---
-    # 1. Random Forest
     rf = RandomForestRegressor(n_estimators=50, random_state=42)
     rf.fit(X_train, y_train)
     m_rf = get_metrics(y_test, rf.predict(X_test))
 
-    # 2. XGBoost (الخوارزمية الإضافية الجديدة القوية للبيانات الجدولية)
     xgb = XGBRegressor(n_estimators=50, learning_rate=0.1, random_state=42)
     xgb.fit(X_train, y_train)
     m_xgb = get_metrics(y_test, xgb.predict(X_test))
 
-    # 3. LSTM
     lstm = Sequential([
         LSTM(32, activation='relu', input_shape=(1, X.shape[1])),
         Dense(1)
@@ -82,7 +78,6 @@ def train_models():
     pred_lstm = lstm.predict(X_test_3d)
     m_lstm = get_metrics(y_test, sy.inverse_transform(pred_lstm))
 
-    # 4. GRU
     gru = Sequential([
         GRU(32, activation='relu', input_shape=(1, X.shape[1])),
         Dense(1)
@@ -96,12 +91,12 @@ def train_models():
 
 with st.spinner('جاري تشغيل محركات "عقاري iQ" وتطبيق خوارزميات الذكاء الاصطناعي...'):
     data = train_models()
-    if data:
+
+if data:
     rf, xgb, lstm, gru, features, sx, sy, m_rf, m_xgb, m_lstm, m_gru, mappings = data
     
     # --- نظام التبويبات الفخم (Tabs) ---
     tab1, tab2, tab3, tab4 = st.tabs(["🏠 قيم عقارك", "📢 اعرض عقارك", "💡 استشيرني", "📈 استثمر"])
-
     with tab1:
         st.sidebar.header("📝 مواصفات العقار")
         u_in = {}
@@ -116,7 +111,6 @@ with st.spinner('جاري تشغيل محركات "عقاري iQ" وتطبيق �
             in_s = sx.transform(in_df)
             in_3d = in_s.reshape((1, 1, in_s.shape[1]))
 
-            # حساب التوقعات للنماذج الأربعة
             res_rf = rf.predict(in_df)[0]
             res_xgb = xgb.predict(in_df)[0]
             
@@ -136,7 +130,7 @@ with st.spinner('جاري تشغيل محركات "عقاري iQ" وتطبيق �
             st.divider()
 
             st.subheader("📊 جدول المقاييس والأداء المقارن للنماذج (Evaluation Metrics)")
-            st.markdown("يقارن هذا الجدول بين أداء النماذج الأربعة (بما فيها خوارزميات التعزيز الحديثة والشبكات العصبية العميقة):")
+            st.markdown("يقارن هذا الجدول بين أداء النماذج الأربعة:")
             
             comparison_df = pd.DataFrame({
                 "الموديل (Model)": ["Random Forest", "XGBoost", "LSTM", "GRU"],
@@ -150,7 +144,7 @@ with st.spinner('جاري تشغيل محركات "عقاري iQ" وتطبيق �
 
     with tab2:
         st.subheader("📢 خدمة اعرض عقارك (قريباً في عقاري iQ)")
-        st.info("هذه الواجهة مخصصة لتمكين أصحاب العقارات والمكاتب من إضافة عقاراتهم مباشرة إلى قاعدة بيانات المنصة ليتم جدولتها وتحليلها تلقائياً.")
+        st.info("هذه الواجهة مخصصة لتمكين أصحاب العقارات والمكاتب من إضافة عقاراتهم مباشرة إلى قاعدة بيانات المنصة.")
 
     with tab3:
         st.subheader("💡 استشيرني - المساعد الذكي للاستثمار (قريباً)")
