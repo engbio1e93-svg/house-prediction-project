@@ -199,6 +199,8 @@ if data:
                 st.divider()
 
     # --- التبويب 3: اعرض عقارك (بالتفاصيل التي طلبتها) ---
+    
+         # --- التبويب 3: اعرض عقارك ---
     with tab3:
         st.subheader("📢 إضافة عقار جديد للعرض في المنصة")
         st.markdown("أدخل تفاصيل عقارك بدقة ليظهر مباشرة في تبويب العروض المتاحة:")
@@ -238,19 +240,21 @@ if data:
                     c1, c2, c3 = st.columns(3)
                     details['floors'] = c1.number_input("عدد الطوابق", value=1, min_value=1)
                     details['rooms'] = c2.number_input("عدد الغرف", value=3, min_value=1)
-                    details['baths'] = c3.number_input("عدد الصحيات", value=2, min_value=1)
+                    details['baths'] = c3.number_input("الصحيات", value=2, min_value=1)
                     
                     c4, c5, c6 = st.columns(3)
                     details['quality'] = c4.slider("جودة البناء (من 10)", 1, 10, 8)
                     details['material'] = c5.selectbox("نوع البناء", ["طابوق", "بلوك", "كونكريت"])
                     details['build_year'] = c6.number_input("سنة البناء", value=2020)
-                    details['renovate_year'] = st.number_input("سنة الترميم", value=2022)
+                    details['renovate_year'] = c6.number_input("سنة الترميم", value=2022)
 
                 elif category == "بناية تجارية":
                     col_b1, col_b2 = st.columns(2)
                     details['floors'] = col_b1.number_input("عدد الطوابق", value=2, min_value=1)
                     details['monthly_income'] = col_b2.number_input("الوارد الشهري ($)", value=1200.0)
-                    uploaded_img = st.file_uploader("صور العقار (اختياري)", type=['png', 'jpg', 'jpeg'])
+
+            # --- هنا تم ضبط مكان الحقول لتكون معرفة دائماً وبدون أخطاء ---
+            uploaded_img = st.file_uploader("صور العقار (اختياري)", type=['png', 'jpg', 'jpeg'])
             notes = st.text_area("ملاحظات إضافية (أو مميزات أخرى غير مذكورة بالحقول)")
 
             submit = st.form_submit_button("🚀 نشر الإعلان في المنصة")
@@ -265,8 +269,7 @@ if data:
                         "details": details, "notes": notes, "img": uploaded_img
                     }
                     st.session_state.listings.append(new_item)
-                    st.success("🎉 تم نشر عقارك بنجاح! انتقل إلى تبويب (العروض المتاحة) لرؤية إعلانك المنشور.")
-
+                    st.success("🎉 تم نشر عقارك بنجاح! انتقل إلى تبويب (العروض المتاحة) لرؤية إعلانك المنشور.")          
     # --- التبويب 4: استشيرني ---
     with tab4:
         st.subheader("💡 استشيرني - المساعد الذكي للاستثمار والتسعير")
