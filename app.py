@@ -58,7 +58,7 @@ def fetch_listings():
     try:
         return (supabase.table("listings").select(
             "id,owner_name,phone_number,address,area,bedrooms,floors,bathrooms,"
-            "build_quality,image,listing_type,price"
+            "build_quality,image_urls,listing_type,price"
         ).order("id", desc=True).execute().data or [])
     except Exception as e:
         st.error(f"تعذر جلب الإعلانات: {e}")
@@ -207,8 +207,8 @@ with tab2:
             st.info("لا توجد إعلانات محفوظة حالياً.")
         for item in listings:
             with st.container(border=True):
-                if item.get("image"):
-                    st.image(item["image"], use_container_width=True)
+                if item.get("image_urls"):
+                    st.image(item["image_urls"][0], use_container_width=True)
                 st.markdown(f"### {item.get('listing_type') or 'عقار'}")
                 price = item.get("price")
                 if price is not None:
@@ -263,7 +263,8 @@ with tab3:
                     "floors": int(floors),
                     "bathrooms": int(bathrooms),
                     "build_quality": int(quality),
-                    "image": image_url,
+                    "image_urls": [image_url] if
+                    image_url else[],
                     "listing_type": listing_type,
                     "price": float(price)
                 }
